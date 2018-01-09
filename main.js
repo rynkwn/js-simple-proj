@@ -5,7 +5,6 @@
 // AHH. Nvm. "e" is the event.
 document.getElementById('issueInputForm').addEventListener('submit', saveIssue);
 console.log("test");
-console.log(chance.guid());
 
 function fetchIssues() {
     // It's also interesting to note that
@@ -75,4 +74,19 @@ function saveIssue(e) {
     // What does this do?
     // Avoids default submission of the form. Ahhh.
     e.preventDefault();
+}
+
+
+function deleteIssue (id) {
+  var issues = JSON.parse(localStorage.getItem('issues'));
+  
+  for(var i = 0; i < issues.length; i++) {
+    if (issues[i].id == id) {
+      issues.splice(i, 1);
+    }
+  }
+  
+  localStorage.setItem('issues', JSON.stringify(issues));
+  
+  fetchIssues();
 }
