@@ -4,7 +4,6 @@
 // listener. Or as part of the "submit" form action.
 // AHH. Nvm. "e" is the event.
 document.getElementById('issueInputForm').addEventListener('submit', saveIssue);
-console.log("test");
 
 function fetchIssues() {
     // It's also interesting to note that
@@ -15,22 +14,24 @@ function fetchIssues() {
     
     issuesList.innerHTML = '';
     
-    for(var i = 0; i < issues.length; i++) {
-        var id = issues[i].id;
-        var desc = issues[i].description;
-        var severity = issues[i].severity;
-        var assignedTo = issues[i].assignedTo;
-        var status = issues[i].status;
-        
-        issuesList.innerHTML += '<div class="well">' +
-                                '<h6>Issue ID: ' + id + '</hd>' +
-                                '<p><span class="label label-info">' + status + '</span></p>' +
-                                '<h3>' + desc + '</h3>' +
-                                '<p><span class="glyphicon glyphicon-time"></span> ' + severity + ' ' +
-                                '<span class="glyphicon glyphicon-user"></span> ' + assignedTo + '</p>'+
-                              '<a href="#" class="btn btn-warning" onclick="setStatusClosed(\''+id+'\')">Close</a> '+
-                              '<a href="#" class="btn btn-danger" onclick="deleteIssue(\''+id+'\')">Delete</a>'+
-                              '</div>';
+    if(issues !== null) {
+        for(var i = 0; i < issues.length; i++) {
+            var id = issues[i].id;
+            var desc = issues[i].description;
+            var severity = issues[i].severity;
+            var assignedTo = issues[i].assignedTo;
+            var status = issues[i].status;
+            
+            issuesList.innerHTML += '<div class="well">' +
+                                    '<h6>Issue ID: ' + id + '</hd>' +
+                                    '<p><span class="label label-info">' + status + '</span></p>' +
+                                    '<h3>' + desc + '</h3>' +
+                                    '<p><span class="glyphicon glyphicon-time"></span> ' + severity + ' ' +
+                                    '<span class="glyphicon glyphicon-user"></span> ' + assignedTo + '</p>'+
+                                  '<a href="#" class="btn btn-warning" onclick="setStatusClosed(\''+id+'\')">Close</a> '+
+                                  '<a href="#" class="btn btn-danger" onclick="deleteIssue(\''+id+'\')">Delete</a>'+
+                                  '</div>';
+        }
     }
 }
 
@@ -86,6 +87,21 @@ function deleteIssue (id) {
     }
   }
   
+  localStorage.setItem('issues', JSON.stringify(issues));
+  
+  fetchIssues();
+}
+
+
+function setStatusClosed (id) {
+  var issues = JSON.parse(localStorage.getItem('issues'));
+  
+  for(var i = 0; i < issues.length; i++) {
+    if (issues[i].id == id) {
+      issues[i].status = "Closed";
+    }
+  }
+    
   localStorage.setItem('issues', JSON.stringify(issues));
   
   fetchIssues();
