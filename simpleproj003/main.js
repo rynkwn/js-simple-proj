@@ -1,14 +1,19 @@
 var canvas = document.getElementById('canvas');
+var score = document.getElementById('score');
 var ctx = canvas.getContext('2d');
 
 // What's this for?
 var raf;
+
+// Some game engine variables.
+var gameLength = 0;
 
 // Some constants
 const BALL_SIZE = 10;
 const SQUARE_SIZE = 20;
 
 const BASE_SPEED = 2;
+const BASE_ENEMY_SPEED = 1;
 
 // The player character!
 var ball = {
@@ -27,11 +32,15 @@ var ball = {
     }
 }
 
+var enemies = [];
+
 // Creates and returns a square variable similar to the above.
-function createSquare(xval, yval, sizeVal, colorVal) {
+function createSquare(xval, yval, vxVal, vyVal, sizeVal, colorVal) {
     return square = {
         x: xval,
         y: yval,
+        vx: vxVal,
+        vy: vyVal,
         size: sizeVal,
         color: colorVal,
         draw: function() {
@@ -39,6 +48,12 @@ function createSquare(xval, yval, sizeVal, colorVal) {
             ctx.fillRect(this.x, this.y, this.size, this.size);
         }
     }
+}
+
+// Create an enemy and add it to our enemies list.
+function createEnemy(x, y, vx, vy) {
+    var square = createSquare(x, y, vx, vy, SQUARE_SIZE, 'red');
+    enemies.push(square);
 }
 
 // Clears the canvas... It is one line, but this is a much
@@ -63,8 +78,55 @@ function moveShape(shape, xDif, yDif) {
     }
 }
 
-var square = createSquare(200, 200, SQUARE_SIZE, 'red');
 
+// Simple game engine thing. Advances score. Generates new enemies as
+// score advances.
+function gameLogic() {
+    gameLength ++;
+    
+    // Spawn new enemies based on gameLength;
+    
+    if(gameLength % 100 == 0) {
+        var numNewEnemies = Math.floor(gameLength / 1000);
+        numNewEnemies += 1;
+        
+        for(var i = 0; i < numNewEnemies; i++) {
+            var direction = Math.floor((Math.random() * 4) + 1);
+            
+            switch(direction) {
+                case 1: // Right
+                    var initialY = Math.floor((Math.random() * (canvas.height - SQUARE_SIZE)));
+                    createEnemy(0, initialY, BASE_ENEMY_SPEED, 0);
+                    break;
+                    
+                case 2: // Left
+                    var initialY = Math.floor((Math.random() * (canvas.height - SQUARE_SIZE)));
+                    createEnemy(canvas.width - SQUARE_SIZE, initialY, -BASE_ENEMY_SPEED, 0);
+                    break;
+                    
+                case 3: // Down
+                    var initialX = Math.floor((Math.random() * (canvas.width - SQUARE_SIZE)));
+                    createEnemy(initialX, 0, 0, BASE_ENEMY_SPEED);
+                    break;
+                    
+                case 4: // Up
+                    var initialX = Math.floor((Math.random() * (canvas.width - SQUARE_SIZE)));
+                    createEnemy(initialX, canvas.height + SQUARE_SIZE, 0, -BASE_ENEMY_SPEED);
+                    break;
+            }
+        }
+    }
+}
+
+// Updates the score display!
+function updateScore() {
+    score.innerHTML = "Score: " + gameLength;
+}
+
+
+createEnemy();
+
+// Main draw function.
 function draw() {
     clearCanvas();
     
@@ -72,8 +134,14 @@ function draw() {
     moveShape(ball, ball.vx, ball.vy);
     ball.draw();
     
-    moveShape(square, 1, -1);
-    square.draw();
+    gameLogic();
+    updateScore();
+    
+    for (var i = 0; i < enemies.length; i++) {
+        moveShape(enemies[i], enemies[i].vx, enemies[i].vy);
+        enemies[i].draw();
+    }
+    
     raf = window.requestAnimationFrame(draw);
 }
 
