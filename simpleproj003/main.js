@@ -2,9 +2,11 @@ var canvas = document.getElementById('canvas');
 var score = document.getElementById('score');
 var ctx = canvas.getContext('2d');
 
+
+var deathSoundEffect = new Audio("Sad Wah Wah Wah Fail Sound.mp3");
+
 var songs = [];
-songs.push('Bad Company - Cant Get Enough.mp3');
-songs.push('Bad Company - Simple Man.mp3');
+songs.push('Soothing Piano Music - relaxdaily N025.mp3');
 
 var lastSongPlayed = Math.floor(Math.random()*songs.length);
 var audio = new Audio(songs[lastSongPlayed]);
@@ -33,11 +35,11 @@ var alive = true;
 // Some constants
 const BALL_SIZE = 10;
 const SQUARE_SIZE = 20;
-const BULLET_SIZE = 1;
+const BULLET_SIZE = 4;
 
 const BASE_SPEED = 2;
 const BASE_ENEMY_SPEED = 1;
-const BASE_BULLET_SPEED = 3;
+const BASE_BULLET_SPEED = 4;
 
 // The player character!
 var ball = {
@@ -82,7 +84,17 @@ function createEnemy(x, y, vx, vy) {
 }
 
 // Create a bullet!
-function createBullet(x, y, vx, vy) {
+function createBullet(x, y, targetX, targetY) {
+    
+    var vx = targetX - x;
+    var vy = targetY - y;
+    
+    var normalizer = Math.sqrt(Math.pow(vx, 2) + Math.pow(vy, 2));
+    vx /= normalizer;
+    vy /= normalizer;
+    vx *= BASE_BULLET_SPEED;
+    vy *= BASE_BULLET_SPEED;
+    
     var bullet = {
         x: x,
         y: y,
@@ -148,26 +160,50 @@ function moveBullet(shape, xDif, yDif) {
 
 // Removes a square!
 function squareDeath(index) {
-    
+    enemies.splice(index);
 }
+
+function bulletDeath(index) {
+    bullets.splice(index);
+} 
 
 function playerDeath() {
     alive = false;
+    deathSoundEffect.play();
+    audio.pause();
 }
 
 // A function that checks if a specified bullet has hit either the player character
 // or any square. If it's hit a square, we remove that square as a side effect.
 // If it's hit the player character, we call playerDeath()
-function bulletImpact(bullet) {
+function bulletImpact(bullet, index) {
     var x = bullet.x;
     var y = bullet.y;
     
+    var liveBullet = true;
+    
     for(var i = 0; i < enemies.length; i++) {
         var square = enemies[i];
-        if(Math.abs(squares.x - x) <= bullet.size + squares.size) {
+        if(Math.abs(square.x - x) <= square.size && Math.abs(square.y - y) <= square.size) {
+            squareDeath(i);
+            i --;
             
+            // Bullet's no longer alive!
+            liveBullet = false;
+            break;
         }
     }
+    
+    // Check if it's hit us.
+    if(liveBullet) {
+        if(Math.abs(x - ball.x) <= ball.size && Math.abs(y - ball.y) <= ball.size) {
+            playerDeath();
+            bulletDeath(index);
+            liveBullet = false;
+        }
+    }
+    
+    return liveBullet;
 }
 
 
@@ -236,20 +272,20 @@ function draw() {
         var liveBullet = moveBullet(bullets[j], bullets[j].vx, bullets[j].vy)
         
         // Check impact.
+        var impactLive = bulletImpact(bullets[j], j);
         
-        liveBullet.draw();
-        
-        if(! liveBullet) {
-            // Destroy the bullet.
-            bullets.splice(j);
+        if(! liveBullet || ! impactLive) {
+            bulletDeath(j);
             j--;
-        } 
+        } else {
+            bullets[j].draw();
+        }
     }
     
     if(alive) {
         raf = window.requestAnimationFrame(draw);
     } else {
-        alert("You've been shot, Jim!");
+        
     }
 }
 
@@ -286,6 +322,36 @@ function keyUpListener(e) {
     }
 }
 
+// This is essentially a shoot from the ball!
+function clickListener(e) {
+    
+    var x;
+    var y;
+    if (e.pageX || e.pageY) { 
+      x = e.pageX;
+      y = e.pageY;
+    }
+    else { 
+      x = e.clientX + document.body.scrollLeft + document.documentElement.scrollLeft; 
+      y = e.clientY + document.body.scrollTop + document.documentElement.scrollTop; 
+    } 
+    x -= canvas.offsetLeft;
+    y -= canvas.offsetTop;
+    
+    var startX = x - ball.x;
+    var startY = y - ball.y;
+    
+    var normalizer = Math.sqrt(Math.pow(startX, 2) + Math.pow(startY, 2));
+    startX /= normalizer;
+    startY /= normalizer;
+    
+    // Now put it outside of the shooter.
+    startX *= (BALL_SIZE + 1);
+    startY *= (BALL_SIZE + 1);
+    
+    createBullet(ball.x + startX, ball.y + startY, x, y);
+}
+
 
 // Can't have the canvas have this event listener, as it only pops
 // when the element is in focus, and canvases may not be able to go
@@ -293,3 +359,4 @@ function keyUpListener(e) {
 document.addEventListener("keydown", keyDownListener, false);
 document.addEventListener("keyup", keyUpListener, false);
 
+canvas.addEventListener("click", clickListener, false)
