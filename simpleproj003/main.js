@@ -39,7 +39,7 @@ const BULLET_SIZE = 4;
 
 const BASE_SPEED = 2;
 const BASE_ENEMY_SPEED = 1;
-const BASE_BULLET_SPEED = 4;
+const BASE_BULLET_SPEED = 5;
 
 // The player character!
 var ball = {
@@ -70,6 +70,7 @@ function createSquare(xval, yval, vxVal, vyVal, sizeVal, colorVal) {
         vy: vyVal,
         size: sizeVal,
         color: colorVal,
+        live: true,
         draw: function() {
             ctx.fillStyle = this.color;
             ctx.fillRect(this.x, this.y, this.size, this.size);
@@ -102,6 +103,7 @@ function createBullet(x, y, targetX, targetY) {
         vy: vy,
         size: BULLET_SIZE,
         color: 'black',
+        live: true,
         draw: function() {
             ctx.beginPath();
             ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2, true);
@@ -138,34 +140,23 @@ function moveShape(shape, xDif, yDif) {
 
 // Similar to moveShape, but we should note that the shape should die if 
 // it's hit an edge.
-function moveBullet(shape, xDif, yDif) {
-    var newX = shape.x + xDif;
-    var newY = shape.y + yDif;
+function moveBullet(bullet, xDif, yDif) {
+    var newX = bullet.x + xDif;
+    var newY = bullet.y + yDif;
     
     // First, make sure they're not moving off the screen.
-    if(newX <= canvas.width - shape.size &&  newX >= 0) {
-        shape.x = newX;
+    if(newX <= canvas.width - bullet.size &&  newX >= 0) {
+        bullet.x = newX;
     } else {
-        return false;
+        bullet.live = false;
     }
     
-    if(newY <= canvas.height - shape.size && newY >= 0) {
-        shape.y = newY;
+    if(newY <= canvas.height - bullet.size && newY >= 0) {
+        bullet.y = newY;
     } else {
-        return false;
+        bullet.live = false;
     }
-    
-    return true;
 }
-
-// Removes a square!
-function squareDeath(index) {
-    enemies.splice(index);
-}
-
-function bulletDeath(index) {
-    bullets.splice(index);
-} 
 
 function playerDeath() {
     alive = false;
@@ -184,11 +175,11 @@ function bulletImpact(bullet, index) {
     
     for(var i = 0; i < enemies.length; i++) {
         var square = enemies[i];
-        if(Math.abs(square.x - x) <= square.size && Math.abs(square.y - y) <= square.size) {
-            squareDeath(i);
-            i --;
+        if(Math.abs(square.x - x) <= square.size / 2 && Math.abs(square.y - y) <= square.size / 2) {
+            square.live = false;
             
             // Bullet's no longer alive!
+            bullet.live = false;
             liveBullet = false;
             break;
         }
@@ -198,12 +189,29 @@ function bulletImpact(bullet, index) {
     if(liveBullet) {
         if(Math.abs(x - ball.x) <= ball.size && Math.abs(y - ball.y) <= ball.size) {
             playerDeath();
-            bulletDeath(index);
-            liveBullet = false;
+            bullet.live = false;
         }
     }
     
-    return liveBullet;
+}
+
+// Have the squares fire at the circle.
+function fireBullets() {
+    for(var i = 0; i < enemies.length; i++) {
+        var square = enemies[i];
+        var startX = ball.x - square.x;
+        var startY = ball.y - square.y;
+        
+        var normalizer = Math.sqrt(Math.pow(startX, 2) + Math.pow(startY, 2));
+        startX /= normalizer;
+        startY /= normalizer;
+        
+        // Now put it outside of the shooter.
+        startX *= (SQUARE_SIZE + 1);
+        startY *= (SQUARE_SIZE + 1);
+        
+        createBullet(square.x + startX, square.y + startY, ball.x, ball.y);
+    }
 }
 
 
@@ -211,6 +219,12 @@ function bulletImpact(bullet, index) {
 // score advances.
 function gameLogic() {
     gameLength ++;
+    
+    
+    // Start the firing process.
+    if(gameLength == 1) {
+        setInterval( "fireBullets()", 2000 );
+    }
     
     // Spawn new enemies based on gameLength;
     
@@ -264,18 +278,24 @@ function draw() {
     
     for (var i = 0; i < enemies.length; i++) {
         moveShape(enemies[i], enemies[i].vx, enemies[i].vy);
-        enemies[i].draw();
+        if(!enemies[i].live) {
+            enemies.splice(i, 1);
+            i--;
+        } else {
+            enemies[i].draw();
+        }
     }
     
     for (var j = 0; j < bullets.length; j++) {
         // Move each bullet.
-        var liveBullet = moveBullet(bullets[j], bullets[j].vx, bullets[j].vy)
+        var bullet = bullets[j];
+        moveBullet(bullets[j], bullets[j].vx, bullets[j].vy)
         
         // Check impact.
-        var impactLive = bulletImpact(bullets[j], j);
+        bulletImpact(bullets[j], j);
         
-        if(! liveBullet || ! impactLive) {
-            bulletDeath(j);
+        if(!bullet.live) {
+            bullets.splice(j, 1);
             j--;
         } else {
             bullets[j].draw();
@@ -351,6 +371,8 @@ function clickListener(e) {
     
     createBullet(ball.x + startX, ball.y + startY, x, y);
 }
+
+
 
 
 // Can't have the canvas have this event listener, as it only pops
